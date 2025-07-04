@@ -91,6 +91,40 @@ export async function addTrade(trade: Omit<Trade, 'id'>): Promise<Trade> {
   return newTrade;
 }
 
+export async function updateTrade(updatedTrade: Trade): Promise<boolean> {
+  const trades = await getTrades();
+  const tradeIndex = trades.findIndex(t => t.id === updatedTrade.id);
+  
+  if (tradeIndex === -1) {
+    return false; // Trade not found
+  }
+  
+  const oldTrade = trades[tradeIndex];
+  trades[tradeIndex] = updatedTrade;
+  await redis.set(KEYS.TRADES, trades);
+  
+  // Update symbol trade counts if symbol changed
+  if (oldTrade.symbol !== updatedTrade.symbol) {
+    const symbols = await getSymbols();
+    
+    // Decrease count for old symbol
+    const oldSymbolIndex = symbols.findIndex(s => s.name === oldTrade.symbol);
+    if (oldSymbolIndex >= 0 && symbols[oldSymbolIndex].trades) {
+      symbols[oldSymbolIndex].trades = Math.max(0, (symbols[oldSymbolIndex].trades || 0) - 1);
+    }
+    
+    // Increase count for new symbol
+    const newSymbolIndex = symbols.findIndex(s => s.name === updatedTrade.symbol);
+    if (newSymbolIndex >= 0) {
+      symbols[newSymbolIndex].trades = (symbols[newSymbolIndex].trades || 0) + 1;
+    }
+    
+    await redis.set(KEYS.SYMBOLS, symbols);
+  }
+  
+  return true;
+}
+
 export async function deleteTrade(id: string): Promise<boolean> {
   const trades = await getTrades();
   const tradeToDelete = trades.find(t => t.id === id);

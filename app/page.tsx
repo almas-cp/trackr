@@ -31,7 +31,7 @@ export default async function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
           {/* Left Column - Performance Chart */}
           <div className="lg:col-span-8">
-            <PerformanceChart />
+            <PerformanceChart trades={trades} />
           </div>
 
           {/* Right Column - Trade Entry */}
@@ -44,7 +44,7 @@ export default async function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Trade History Table */}
           <div className="lg:col-span-8">
-            <TradeHistory trades={trades} />
+            <TradeHistory trades={trades} symbols={symbols} />
           </div>
           
           {/* Symbols Distribution Chart */}

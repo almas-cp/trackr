@@ -1,45 +1,61 @@
 "use client"
 
-import React from 'react'
+import React, { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { useTheme } from 'next-themes'
+import { Trade } from '@/lib/redis-schema'
 
-const data = [
-  { date: 'Jan 1', pnl: 0 },
-  { date: 'Jan 8', pnl: 432 },
-  { date: 'Jan 15', pnl: 1234 },
-  { date: 'Jan 22', pnl: 897 },
-  { date: 'Jan 29', pnl: 1567 },
-  { date: 'Feb 5', pnl: 2134 },
-  { date: 'Feb 12', pnl: 1876 },
-  { date: 'Feb 19', pnl: 2456 },
-  { date: 'Feb 26', pnl: 3234 },
-  { date: 'Mar 5', pnl: 2987 },
-  { date: 'Mar 12', pnl: 3567 },
-  { date: 'Mar 19', pnl: 4123 },
-  { date: 'Mar 26', pnl: 3896 },
-  { date: 'Apr 2', pnl: 4567 },
-  { date: 'Apr 9', pnl: 5234 },
-  { date: 'Apr 16', pnl: 4876 },
-  { date: 'Apr 23', pnl: 5678 },
-  { date: 'Apr 30', pnl: 6234 },
-  { date: 'May 7', pnl: 5987 },
-  { date: 'May 14', pnl: 6756 },
-  { date: 'May 21', pnl: 7234 },
-  { date: 'May 28', pnl: 8123 },
-  { date: 'Jun 4', pnl: 7896 },
-  { date: 'Jun 11', pnl: 8567 },
-  { date: 'Jun 18', pnl: 9234 },
-  { date: 'Jun 25', pnl: 8976 },
-  { date: 'Jul 2', pnl: 9876 },
-  { date: 'Jul 9', pnl: 10234 },
-  { date: 'Jul 16', pnl: 11567 },
-  { date: 'Jul 23', pnl: 12847 },
-]
+interface PerformanceChartProps {
+  trades: Trade[];
+}
 
-export default function PerformanceChart() {
+export default function PerformanceChart({ trades }: PerformanceChartProps) {
   const { theme } = useTheme()
+  
+  // Process trades to create chart data
+  const chartData = useMemo(() => {
+    if (!trades.length) return [];
+    
+    // Sort trades by date (oldest first)
+    const sortedTrades = [...trades].sort((a, b) => {
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
+    });
+    
+    // Calculate cumulative P/L for each trade
+    let cumulativePnL = 0;
+    
+    return sortedTrades.map((trade, index) => {
+      cumulativePnL += trade.pnl;
+      
+      return {
+        tradeNumber: index + 1,
+        symbol: trade.symbol,
+        date: trade.date,
+        action: trade.action,
+        pnl: Number(cumulativePnL.toFixed(2))
+      };
+    });
+  }, [trades]);
+
+  // If no data, show message
+  if (chartData.length === 0) {
+    return (
+      <Card className="h-full">
+        <CardHeader>
+          <CardTitle>Performance Over Time</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[400px] flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-muted-foreground mb-2">No trade data available.</p>
+              <p className="text-sm text-muted-foreground">Add trades to see your performance over time.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
   
   return (
     <Card className="h-full">
@@ -49,10 +65,11 @@ export default function PerformanceChart() {
       <CardContent>
         <div className="h-[400px]">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data}>
+            <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
               <XAxis 
-                dataKey="date" 
+                dataKey="tradeNumber"
+                label={{ value: 'Trade Number', position: 'insideBottomRight', offset: -5 }}
                 tick={{ fontSize: 12 }}
                 tickLine={{ stroke: theme === 'dark' ? '#374151' : '#d1d5db' }}
               />
@@ -62,15 +79,13 @@ export default function PerformanceChart() {
                 tickFormatter={(value) => `$${value}`}
               />
               <Tooltip 
-                formatter={(value) => [`$${value}`, 'P/L']}
-                labelStyle={{ 
-                  color: theme === 'dark' ? '#fff' : '#000',
-                  backgroundColor: theme === 'dark' ? '#1f2937' : '#fff'
-                }}
+                formatter={(value) => [`$${value}`, 'Cumulative P/L']}
+                labelFormatter={(label) => `Trade #${label}`}
                 contentStyle={{
                   backgroundColor: theme === 'dark' ? '#1f2937' : '#fff',
                   border: `1px solid ${theme === 'dark' ? '#374151' : '#d1d5db'}`,
-                  borderRadius: '8px'
+                  borderRadius: '8px',
+                  padding: '8px'
                 }}
               />
               <Line 
