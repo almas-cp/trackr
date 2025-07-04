@@ -3,6 +3,7 @@
 import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TrendingUp, TrendingDown, Target, DollarSign, BarChart3 } from 'lucide-react'
+import { Trade } from '@/lib/redis-schema'
 
 interface StatCardProps {
   title: string
@@ -40,35 +41,72 @@ function StatCard({ title, value, change, trend, icon }: StatCardProps) {
   )
 }
 
-export default function DashboardStats() {
+interface DashboardStatsProps {
+  trades: Trade[];
+}
+
+export default function DashboardStats({ trades }: DashboardStatsProps) {
+  // Calculate stats from trades
+  const calculateStats = () => {
+    if (trades.length === 0) {
+      return {
+        winRate: '0.0%',
+        totalPL: '$0.00',
+        totalTrades: '0',
+        avgProfit: '$0.00'
+      };
+    }
+    
+    // Total number of trades
+    const totalTrades = trades.length;
+    
+    // Calculate total P/L and win count
+    const { totalPL, winCount } = trades.reduce(
+      (acc, trade) => ({
+        totalPL: acc.totalPL + trade.pnl,
+        winCount: trade.pnl > 0 ? acc.winCount + 1 : acc.winCount
+      }),
+      { totalPL: 0, winCount: 0 }
+    );
+    
+    // Calculate win rate
+    const winRate = (winCount / totalTrades) * 100;
+    
+    // Calculate average profit per trade
+    const avgProfit = totalPL / totalTrades;
+    
+    return {
+      winRate: `${winRate.toFixed(1)}%`,
+      totalPL: `$${totalPL.toFixed(2)}`,
+      totalTrades: `${totalTrades}`,
+      avgProfit: `$${avgProfit.toFixed(2)}`
+    };
+  };
+  
+  const stats = calculateStats();
+  
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <StatCard
         title="Win Rate"
-        value="68.4%"
-        change="+2.1%"
-        trend="up"
+        value={stats.winRate}
         icon={<Target className="h-4 w-4 text-muted-foreground" />}
       />
       <StatCard
         title="Total P/L"
-        value="$12,847.32"
-        change="+$1,234.50"
-        trend="up"
+        value={stats.totalPL}
+        trend={parseFloat(stats.totalPL.replace('$', '')) >= 0 ? 'up' : 'down'}
         icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
       />
       <StatCard
         title="Total Trades"
-        value="156"
-        change="+12"
-        trend="up"
+        value={stats.totalTrades}
         icon={<BarChart3 className="h-4 w-4 text-muted-foreground" />}
       />
       <StatCard
         title="Avg Profit/Trade"
-        value="$82.36"
-        change="-$5.23"
-        trend="down"
+        value={stats.avgProfit}
+        trend={parseFloat(stats.avgProfit.replace('$', '')) >= 0 ? 'up' : 'down'}
         icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
       />
     </div>

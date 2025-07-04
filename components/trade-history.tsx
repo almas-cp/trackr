@@ -6,35 +6,22 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Search, Download, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Download, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
+import { Trade, deleteTrade } from '@/lib/redis-schema'
+import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
 
-interface Trade {
-  id: string
-  date: string
-  symbol: string
-  action: 'buy' | 'sell'
-  size: number
-  pnl: number
-  notes: string
+interface TradeHistoryProps {
+  trades: Trade[];
 }
 
-const mockTrades: Trade[] = [
-  { id: '1', date: '2024-01-15', symbol: 'EURUSD', action: 'buy', size: 0.10, pnl: 125.50, notes: 'Strong bullish momentum' },
-  { id: '2', date: '2024-01-14', symbol: 'GBPUSD', action: 'sell', size: 0.05, pnl: -45.20, notes: 'Hit stop loss' },
-  { id: '3', date: '2024-01-13', symbol: 'USDJPY', action: 'buy', size: 0.08, pnl: 89.75, notes: 'Breakout confirmed' },
-  { id: '4', date: '2024-01-12', symbol: 'AUDUSD', action: 'sell', size: 0.12, pnl: 67.30, notes: 'Resistance rejection' },
-  { id: '5', date: '2024-01-11', symbol: 'USDCAD', action: 'buy', size: 0.06, pnl: -23.80, notes: 'False breakout' },
-  { id: '6', date: '2024-01-10', symbol: 'EURUSD', action: 'sell', size: 0.15, pnl: 234.60, notes: 'Perfect entry at resistance' },
-  { id: '7', date: '2024-01-09', symbol: 'GBPUSD', action: 'buy', size: 0.09, pnl: 156.45, notes: 'Trend continuation' },
-  { id: '8', date: '2024-01-08', symbol: 'USDJPY', action: 'sell', size: 0.07, pnl: -78.90, notes: 'Unexpected news impact' },
-]
-
-export default function TradeHistory() {
+export default function TradeHistory({ trades }: TradeHistoryProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const router = useRouter()
   const tradesPerPage = 5
 
-  const filteredTrades = mockTrades.filter(trade =>
+  const filteredTrades = trades.filter(trade =>
     trade.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
     trade.notes.toLowerCase().includes(searchTerm.toLowerCase())
   )
@@ -45,7 +32,47 @@ export default function TradeHistory() {
   const currentTrades = filteredTrades.slice(startIndex, endIndex)
 
   const handleExport = () => {
-    console.log('Exporting trades...')
+    // Create CSV content
+    const headers = ['Date', 'Symbol', 'Action', 'Size', 'P/L', 'Notes']
+    const csvRows = [
+      headers.join(','),
+      ...filteredTrades.map(trade => [
+        trade.date,
+        trade.symbol,
+        trade.action.toUpperCase(),
+        trade.size,
+        trade.pnl,
+        `"${trade.notes.replace(/"/g, '""')}"`
+      ].join(','))
+    ]
+    
+    const csvContent = csvRows.join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    
+    // Create download link
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', `trades_export_${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    toast.success('Trades exported successfully')
+  }
+  
+  const handleDeleteTrade = async (id: string) => {
+    if (confirm('Are you sure you want to delete this trade?')) {
+      try {
+        await deleteTrade(id)
+        toast.success('Trade deleted successfully')
+        router.refresh()
+      } catch (error) {
+        toast.error('Failed to delete trade')
+        console.error(error)
+      }
+    }
   }
 
   return (
@@ -71,67 +98,87 @@ export default function TradeHistory() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Symbol</TableHead>
-                <TableHead>Action</TableHead>
-                <TableHead>Size</TableHead>
-                <TableHead>P/L</TableHead>
-                <TableHead>Notes</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {currentTrades.map((trade) => (
-                <TableRow key={trade.id}>
-                  <TableCell className="font-medium">{trade.date}</TableCell>
-                  <TableCell>{trade.symbol}</TableCell>
-                  <TableCell>
-                    <Badge variant={trade.action === 'buy' ? 'default' : 'secondary'}>
-                      {trade.action.toUpperCase()}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{trade.size}</TableCell>
-                  <TableCell>
-                    <span className={trade.pnl >= 0 ? 'text-green-600' : 'text-red-600'}>
-                      ${trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}
-                    </span>
-                  </TableCell>
-                  <TableCell className="max-w-xs truncate">{trade.notes}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-        
-        {totalPages > 1 && (
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-4 gap-2">
-            <p className="text-sm text-muted-foreground">
-              Showing {startIndex + 1} to {Math.min(endIndex, filteredTrades.length)} of {filteredTrades.length} trades
-            </p>
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm">
-                Page {currentPage} of {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+        {trades.length > 0 ? (
+          <>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Symbol</TableHead>
+                    <TableHead>Action</TableHead>
+                    <TableHead>Size</TableHead>
+                    <TableHead>P/L</TableHead>
+                    <TableHead>Notes</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {currentTrades.map((trade) => (
+                    <TableRow key={trade.id}>
+                      <TableCell className="font-medium">{trade.date}</TableCell>
+                      <TableCell>{trade.symbol}</TableCell>
+                      <TableCell>
+                        <Badge variant={trade.action === 'buy' ? "default" : "destructive"}>
+                          {trade.action.toUpperCase()}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{trade.size}</TableCell>
+                      <TableCell>
+                        <span className={trade.pnl >= 0 ? 'text-green-600' : 'text-red-600'}>
+                          ${trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="max-w-xs truncate">{trade.notes}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteTrade(trade.id)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Trash2 className="h-4 w-4 text-muted-foreground hover:text-red-500" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
+            
+            {totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-4 gap-2">
+                <p className="text-sm text-muted-foreground">
+                  Showing {startIndex + 1} to {Math.min(endIndex, filteredTrades.length)} of {filteredTrades.length} trades
+                </p>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-muted-foreground mb-2">No trades recorded yet.</p>
+            <p className="text-sm text-muted-foreground">Use the "Add New Trade" form to record your first trade.</p>
           </div>
         )}
       </CardContent>
