@@ -21,7 +21,6 @@ export default function Home() {
           {/* Left Column - Analytics */}
           <div className="lg:col-span-2 space-y-8">
             <PerformanceChart />
-            <SymbolsChart />
           </div>
 
           {/* Right Column - Trade Entry */}
@@ -30,9 +29,17 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Trade History */}
-        <div>
-          <TradeHistory />
+        {/* Trade History and Symbols Distribution */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* Trade History Table */}
+          <div className="lg:col-span-8">
+            <TradeHistory />
+          </div>
+          
+          {/* Symbols Distribution Chart */}
+          <div className="lg:col-span-4">
+            <SymbolsChart />
+          </div>
         </div>
       </main>
     </div>

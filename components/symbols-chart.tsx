@@ -19,37 +19,40 @@ export default function SymbolsChart() {
   const { theme } = useTheme()
   
   return (
-    <Card className="h-full">
-      <CardHeader>
-        <CardTitle>Trading Symbols Distribution</CardTitle>
+    <Card className="h-full flex flex-col">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-xl">Symbols Distribution</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="h-[300px]">
+      <CardContent className="flex-grow">
+        <div className="h-[400px] flex items-center justify-center">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={data}
                 cx="50%"
                 cy="50%"
-                labelLine={false}
+                labelLine={true}
                 label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                outerRadius={80}
+                outerRadius={90}
+                innerRadius={40}
                 fill="#8884d8"
                 dataKey="value"
+                paddingAngle={2}
               >
                 {data.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
               <Tooltip 
-                formatter={(value, name) => [`${value} trades`, name]}
+                formatter={(value, name) => [`${value}%`, name]}
                 contentStyle={{
                   backgroundColor: theme === 'dark' ? '#1f2937' : '#fff',
                   border: `1px solid ${theme === 'dark' ? '#374151' : '#d1d5db'}`,
-                  borderRadius: '8px'
+                  borderRadius: '8px',
+                  padding: '8px 12px'
                 }}
               />
-              <Legend />
+              <Legend layout="horizontal" verticalAlign="bottom" align="center" />
             </PieChart>
           </ResponsiveContainer>
         </div>

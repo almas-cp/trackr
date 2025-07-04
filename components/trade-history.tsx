@@ -50,20 +50,20 @@ export default function TradeHistory() {
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-          <CardTitle>Trade History</CardTitle>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <div className="relative">
+      <CardHeader className="pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <CardTitle className="text-xl">Trade History</CardTitle>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:max-w-md">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search trades..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 w-full sm:w-64"
+                className="pl-10"
               />
             </div>
-            <Button onClick={handleExport} variant="outline" className="w-full sm:w-auto">
+            <Button onClick={handleExport} variant="outline" className="flex-shrink-0">
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>
@@ -107,7 +107,7 @@ export default function TradeHistory() {
         </div>
         
         {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-4 gap-2">
             <p className="text-sm text-muted-foreground">
               Showing {startIndex + 1} to {Math.min(endIndex, filteredTrades.length)} of {filteredTrades.length} trades
             </p>
