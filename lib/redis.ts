@@ -2,8 +2,8 @@ import { Redis } from '@upstash/redis'
 
 // Initialize Redis client
 export const redis = new Redis({
-  url: 'https://stirring-weevil-16969.upstash.io',
-  token: 'AUJJAAIjcDE2Y2QyOGE2YzBlYzE0NTFlYmU4MGQzOGJmYmFiNTU3YXAxMA',
+  url: process.env.UPSTASH_REDIS_REST_URL || '',
+  token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
 })
 
 // Helper function to test the connection
